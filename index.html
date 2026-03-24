@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Canvas Assistant</title>
+  <script>
+    const storedTheme = localStorage.getItem("theme");
+    const preferredTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    document.documentElement.dataset.theme = storedTheme || preferredTheme;
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -12,15 +17,29 @@
 <body>
   <main class="page">
     <section class="hero">
-      <p class="eyebrow">Canvas Assistant</p>
-      <h1>Etsy seller workflow tool</h1>
-      <p class="lead">
-        Canvas Assistant is a desktop tool designed to help Etsy sellers connect their shops,
-        prepare product drafts, manage mockup workflows, and move faster across day-to-day store operations.
-      </p>
-      <div class="actions">
-        <a class="button button-primary" href="mailto:support.canvasassistant@gmail.com">Contact</a>
-        <a class="button button-secondary" href="#privacy">Privacy</a>
+      <div class="hero-copy">
+        <div class="hero-topbar">
+          <p class="eyebrow">Canvas Assistant</p>
+          <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch color theme">
+            <span class="theme-toggle-label">Dark mode</span>
+          </button>
+        </div>
+        <h1>Etsy seller workflow tool</h1>
+        <p class="lead">
+          Canvas Assistant is a desktop tool designed to help Etsy sellers connect their shops,
+          prepare product drafts, manage mockup workflows, and move faster across day-to-day store operations.
+        </p>
+        <div class="actions">
+          <a class="button button-primary" href="mailto:support.canvasassistant@gmail.com">Contact</a>
+          <a class="button button-secondary" href="#privacy">Privacy</a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <img
+          id="hero-image"
+          src="assets/screenshots/screen-library-controls.png"
+          alt="Canvas Assistant sign-in screen"
+        >
       </div>
     </section>
 
@@ -49,6 +68,19 @@
       </div>
     </section>
 
+    <section class="card">
+      <div class="section-head gallery-head">
+        <div>
+          <p class="eyebrow">Screens</p>
+          <h2>Inside the app</h2>
+        </div>
+        <p class="body-copy">
+          Real product screens are woven directly into the page, with a lead view at the top and supporting workflow views below.
+        </p>
+      </div>
+      <div class="gallery" id="gallery"></div>
+    </section>
+
     <section class="card" id="privacy">
       <div class="section-head">
         <p class="eyebrow">Privacy</p>
@@ -71,5 +103,154 @@
       </p>
     </section>
   </main>
+
+  <div class="lightbox" id="lightbox" aria-hidden="true">
+    <div class="lightbox-backdrop" data-close-lightbox></div>
+    <div class="lightbox-dialog" role="dialog" aria-modal="true" aria-labelledby="lightbox-title">
+      <button class="lightbox-close" id="lightbox-close" type="button" aria-label="Close image view">Close</button>
+      <div class="lightbox-media">
+        <img id="lightbox-image" src="" alt="">
+      </div>
+      <div class="lightbox-copy">
+        <p class="eyebrow">Screen Preview</p>
+        <h3 id="lightbox-title"></h3>
+        <p id="lightbox-description" class="body-copy"></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const screenshots = [
+      {
+        title: "Sign-in screen",
+        description: "The entry point into the app, showing the first screen users see before moving into the workflow.",
+        src: {
+          light: "assets/screenshots/screen-library-control-light.png",
+          dark: "assets/screenshots/screen-library-controls.png"
+        },
+        alt: "Canvas Assistant sign-in screen",
+        featured: true
+      },
+      {
+        title: "Mockup preparation",
+        description: "The workspace used to prepare mockups and move product visuals into listing-ready assets.",
+        src: {
+          light: "assets/screenshots/screen-main-dashboard-light.png",
+          dark: "assets/screenshots/screen-main-dashboard.png"
+        },
+        alt: "Canvas Assistant mockup preparation workspace"
+      },
+      {
+        title: "Draft preparation",
+        description: "A focused editing view for refining listing details and preparing saved drafts for reuse.",
+        src: {
+          light: "assets/screenshots/screen-draft-preparation-light.png",
+          dark: "assets/screenshots/screen-draft-preparation.png"
+        },
+        alt: "Canvas Assistant draft preparation screen"
+      },
+      {
+        title: "Workflow summary",
+        description: "A broader operational view that highlights later steps in the workflow and the active work area.",
+        src: {
+          light: "assets/screenshots/screen-workflow-summary-light.png",
+          dark: "assets/screenshots/screen-workflow-summary.png"
+        },
+        alt: "Canvas Assistant workflow summary screen"
+      }
+    ];
+
+    const gallery = document.getElementById("gallery");
+    const heroImage = document.getElementById("hero-image");
+    const themeToggle = document.getElementById("theme-toggle");
+    const themeToggleLabel = themeToggle.querySelector(".theme-toggle-label");
+    const lightbox = document.getElementById("lightbox");
+    const lightboxImage = document.getElementById("lightbox-image");
+    const lightboxTitle = document.getElementById("lightbox-title");
+    const lightboxDescription = document.getElementById("lightbox-description");
+    const lightboxClose = document.getElementById("lightbox-close");
+    let activeShotIndex = null;
+
+    function getTheme() {
+      return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+    }
+
+    function updateThemeToggleLabel(theme) {
+      themeToggleLabel.textContent = theme === "dark" ? "Light mode" : "Dark mode";
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      localStorage.setItem("theme", theme);
+      heroImage.src = screenshots[0].src[theme];
+      updateThemeToggleLabel(theme);
+
+      gallery.querySelectorAll(".shot-image").forEach((image, index) => {
+        image.src = screenshots[index].src[theme];
+      });
+
+      if (activeShotIndex !== null) {
+        lightboxImage.src = screenshots[activeShotIndex].src[theme];
+      }
+    }
+
+    function openLightbox(index) {
+      const shot = screenshots[index];
+      const theme = getTheme();
+      activeShotIndex = index;
+      lightboxImage.src = shot.src[theme];
+      lightboxImage.alt = shot.alt;
+      lightboxTitle.textContent = shot.title;
+      lightboxDescription.textContent = shot.description;
+      lightbox.classList.add("is-open");
+      lightbox.setAttribute("aria-hidden", "false");
+      document.body.classList.add("lightbox-open");
+    }
+
+    function closeLightbox() {
+      activeShotIndex = null;
+      lightbox.classList.remove("is-open");
+      lightbox.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("lightbox-open");
+    }
+
+    screenshots.forEach((shot, index) => {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = shot.featured ? "shot-card shot-card-featured shot-trigger" : "shot-card shot-trigger";
+      card.setAttribute("aria-label", `Open ${shot.title}`);
+      card.innerHTML = `
+        <div class="shot-frame">
+          <img class="shot-image" src="${shot.src[getTheme()]}" alt="${shot.alt}" loading="lazy">
+        </div>
+        <div class="shot-copy">
+          <h3>${shot.title}</h3>
+          <p>${shot.description}</p>
+        </div>
+      `;
+      card.addEventListener("click", () => openLightbox(index));
+      gallery.appendChild(card);
+    });
+
+    themeToggle.addEventListener("click", () => {
+      applyTheme(getTheme() === "dark" ? "light" : "dark");
+    });
+
+    lightbox.addEventListener("click", (event) => {
+      if (event.target.hasAttribute("data-close-lightbox")) {
+        closeLightbox();
+      }
+    });
+
+    lightboxClose.addEventListener("click", closeLightbox);
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && lightbox.classList.contains("is-open")) {
+        closeLightbox();
+      }
+    });
+
+    applyTheme(getTheme());
+  </script>
 </body>
 </html>
